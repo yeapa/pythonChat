@@ -1,38 +1,51 @@
 #-*-coding:utf-8-*-
-from Tkinter import *
+import threading
+import time
 
-root = Tk()
-# 80x80代表了初始化时主窗口的大小，0，0代表了初始化时窗口所在的位置
-root.geometry('800x800')
+condition = threading.Condition()
+products = 0
 
-# 填充方向
+class Producer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
 
-Label(root, text = 'l1', bg = 'red').pack(fill = Y)
-Label(root, text = 'l2', bg = 'green').pack(fill = BOTH)
-Label(root, text = 'l3', bg = 'blue').pack(fill = X)
+    def run(self):
+        global condition, products
+        while True:
+            if condition.acquire():
+                if products < 10:
+                    products += 1;
+                    print "Producer(%s):deliver one, now products:%s" %(self.name, products)
+                    condition.notify()
+                else:
+                    print "Producer(%s):already 10, stop deliver, now products:%s" %(self.name, products)
+                    condition.wait();
+                condition.release()
+                time.sleep(2)
 
+class Consumer(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
 
-# 左右布局
-# Label(root, text = 'l1', bg = 'red').pack(fill = Y, side = LEFT)
-# Label(root, text = 'l2', bg = 'green').pack(fill = BOTH, side = RIGHT)
-# Label(root, text = 'l3', bg = 'blue').pack(fill = X, side = LEFT)
+    def run(self):
+        global condition, products
+        while True:
+            if condition.acquire():
+                if products > 1:
+                    products -= 1
+                    print "Consumer(%s):consume one, now products:%s" %(self.name, products)
+                    condition.notify()
+                else:
+                    print "Consumer(%s):only 1, stop consume, products:%s" %(self.name, products)
+                    condition.wait();
+                condition.release()
+                time.sleep(2)
 
-# 绝对布局
-# l4 = Label(root, text = 'l4')
-# l4.place(x = 3, y = 3, anchor = NW)
+if __name__ == "__main__":
+    for p in range(0, 2):
+        p = Producer()
+        p.start()
 
-
-# Grid 网格布局
-# l1 = Label(root, text = 'l1', bg = 'red')
-# l2 = Label(root, text = 'l2', bg = 'blue')
-# l3 = Label(root, text = 'l3', bg = 'green')
-# l4 = Label(root, text = 'l4', bg = 'yellow')
-# l5 = Label(root, text = 'l5', bg = 'purple')
-#
-# l1.grid(row = 0, column = 0)
-# l2.grid(row = 1, column = 0)
-# l3.grid(row = 1, column = 1)
-# l4.grid(row = 2 )
-# l5.grid(row = 0, column = 3)
-
-root.mainloop()
+    for c in range(0, 10):
+        c = Consumer()
+        c.start()
